@@ -55,13 +55,6 @@ Then open [http://localhost:8501](http://localhost:8501) in your browser.
 
 ---
 
-## 📸 Demo Screenshots
-| Chat Interface | Bot Response Example |
-|----------------|----------------------|
-| ![Chat UI](screenshots/chat_ui.png) | ![Response](screenshots/demo_response.png) |
-
----
-
 ## 🧠 Technologies Used
 - Python 3.10+
 - Streamlit
@@ -83,8 +76,6 @@ Then open [http://localhost:8501](http://localhost:8501) in your browser.
 ## 👩‍💻 Author
 **Divvela Hemarshini**  
 B.Tech CSE | AI & ML Enthusiast  
-📧 your.email@example.com  
-🔗 [LinkedIn](https://linkedin.com/in/your-link)
 
 ---
 
