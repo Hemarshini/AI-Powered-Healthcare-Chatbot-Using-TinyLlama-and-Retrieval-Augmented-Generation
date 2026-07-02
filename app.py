@@ -6,7 +6,9 @@ from llm_utils import (
     get_llm,
     generate_answer_ollama,
     generate_answer_hf,
+    get_model_display_name,
     SIMILARITY_THRESHOLD,
+    SIMILARITY_LOW_THRESHOLD,
 )
 
 st.set_page_config(
@@ -308,9 +310,32 @@ html, body, [class*="css"] {
 </style>
 """, unsafe_allow_html=True)
 
+# ── Cached resources ─────────────────────────────────────────────────────────
+@st.cache_resource
+def load_embeddings_cached():
+    return get_embeddings()
+
+@st.cache_resource
+def load_vector_store_cached():
+    embeddings = load_embeddings_cached()
+    with st.spinner("Setting up knowledge base..."):
+        return load_or_build_index(embeddings)
+
+@st.cache_resource
+def load_llm_cached():
+    with st.spinner("Loading language model..."):
+        return get_llm()
+
+# Load early (cached after first run) so the sidebar/header can display
+# whichever model is actually active, instead of a hardcoded name.
+_db = load_vector_store_cached()
+_llm_tuple = load_llm_cached()
+_backend_type, _ = _llm_tuple
+_model_display_name = get_model_display_name(_backend_type)
+
 # ── Sidebar ──────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("""
+    st.markdown(f"""
     <div class="sidebar-logo">
         <span class="logo-icon">🩺</span>
         <h2>HealthBot AI</h2>
@@ -329,11 +354,11 @@ with st.sidebar:
         </div>
         <div class="step-item">
             <div class="step-num">3</div>
-            <div class="step-text">Llama 3.2 generates a grounded response using only that context</div>
+            <div class="step-text">{_model_display_name} generates a grounded response using only that context</div>
         </div>
     </div>
     <div class="tech-badges">
-        <span class="tech-badge">Llama 3.2</span>
+        <span class="tech-badge">{_model_display_name}</span>
         <span class="tech-badge">RAG</span>
         <span class="tech-badge">FAISS</span>
         <span class="tech-badge">LangChain</span>
@@ -347,39 +372,40 @@ with st.sidebar:
     """, unsafe_allow_html=True)
     st.caption("Built by **Divvela Hemarshini** · MIT License")
 
-# ── Cached resources ─────────────────────────────────────────────────────────
-@st.cache_resource
-def load_embeddings_cached():
-    return get_embeddings()
-
-@st.cache_resource
-def load_vector_store_cached():
-    embeddings = load_embeddings_cached()
-    with st.spinner("Setting up knowledge base..."):
-        return load_or_build_index(embeddings)
-
-@st.cache_resource
-def load_llm_cached():
-    with st.spinner("Loading Llama 3.2..."):
-        return get_llm()
-
 # ── Domain check + generation ────────────────────────────────────────────────
-def is_medical_query(question, db, threshold=SIMILARITY_THRESHOLD):
+def classify_query(question, db, high=SIMILARITY_THRESHOLD, low=SIMILARITY_LOW_THRESHOLD):
+    """Classify a query into one of three tiers based on retrieval similarity:
+    - "confident": strong match, answer normally from retrieved context
+    - "uncovered": plausibly health-related, but not covered by the knowledge base
+    - "off_topic": doesn't appear related to health at all
+    """
     results = db.similarity_search_with_relevance_scores(question, k=3)
     if not results:
-        return False, 0.0, []
+        return "off_topic", 0.0, []
     top_score = results[0][1]
     docs = [r[0] for r in results]
-    return top_score >= threshold, top_score, docs
+    if top_score >= high:
+        return "confident", top_score, docs
+    elif top_score >= low:
+        return "uncovered", top_score, docs
+    return "off_topic", top_score, docs
 
 def generate_answer(question, db, llm_tuple):
     backend_type, llm = llm_tuple
-    is_relevant, score, docs = is_medical_query(question, db)
-    if not is_relevant:
+    status, score, docs = classify_query(question, db)
+
+    if status == "off_topic":
         return ("ood", "I'm a healthcare assistant and can only help with health-related questions. "
                 "Your question doesn't appear to be related to medical or wellness topics. "
                 "Please ask about symptoms, conditions, nutrition, mental health, "
                 "preventive care, or other health topics.")
+
+    if status == "uncovered":
+        return ("ood", "I don't have enough information on that specific topic in my current knowledge base. "
+                "I can help with related topics like diabetes, heart health, respiratory conditions, "
+                "mental health, nutrition, sleep, and preventive care — for guidance on this particular "
+                "question, please consult a qualified healthcare professional.")
+
     context = "\n\n".join(doc.page_content for doc in docs)
     try:
         if backend_type == "ollama":
@@ -398,7 +424,7 @@ if "history" not in st.session_state:
 # ── Main app ─────────────────────────────────────────────────────────────────
 def main():
     # Header
-    st.markdown("""
+    st.markdown(f"""
     <div class="main-header">
         <div class="header-tag">🤖 AI-Powered · RAG Architecture</div>
         <h1>AI <span>Healthcare</span> Chatbot</h1>
@@ -417,15 +443,15 @@ def main():
                 <span class="stat-label">Architecture</span>
             </div>
             <div class="stat-item">
-                <span class="stat-num">Llama 3.2</span>
+                <span class="stat-num">{_model_display_name}</span>
                 <span class="stat-label">Language model</span>
             </div>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-    db = load_vector_store_cached()
-    llm_tuple = load_llm_cached()
+    db = _db
+    llm_tuple = _llm_tuple
 
     # Input area
     st.markdown('<div class="input-wrapper">', unsafe_allow_html=True)

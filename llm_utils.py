@@ -19,8 +19,15 @@ runs locally, free, no API key needed.
 
 import os
 
-# Similarity threshold below which a query is rejected as out-of-domain
+# Similarity threshold above which a query gets a confident, retrieval-grounded answer
 SIMILARITY_THRESHOLD = float(os.environ.get("HEALTHBOT_SIMILARITY_THRESHOLD", "0.25"))
+
+# Similarity threshold below which a query is treated as genuinely off-topic
+# (e.g. "what's the capital of France"). Between this and SIMILARITY_THRESHOLD,
+# a query is treated as health-adjacent but not covered by the knowledge base —
+# these two cases get different, more honest messages instead of one blanket
+# "not health-related" response.
+SIMILARITY_LOW_THRESHOLD = float(os.environ.get("HEALTHBOT_SIMILARITY_LOW_THRESHOLD", "0.12"))
 
 # Default models
 DEFAULT_OLLAMA_MODEL = os.environ.get("HEALTHBOT_OLLAMA_MODEL", "llama3.2")
