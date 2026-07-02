@@ -42,6 +42,7 @@ Rules:
 - If the Context does not contain enough information to answer, say: "I don't have enough information on that topic. Please consult a qualified medical professional."
 - Never make up medical facts
 - Stop writing immediately after your answer. Do NOT generate any further "Question:" or "Answer:" pairs.
+- Do NOT include any preamble like "Sure!" or "Here's the answer". Do NOT restate the question. Do NOT use labels like "Q:" or "A:". Write only the plain answer sentences, nothing else.
 
 Context:
 {context}
@@ -51,9 +52,30 @@ Question: {question}
 Answer:"""
 
 
-# Markers that signal the model has started drifting into extra Q&A pairs
-# instead of stopping after answering the actual question.
-_STOP_MARKERS = ["\nQuestion:", "\nQ:", "\n\nQuestion", "\nQuestion "]
+import re
+
+# Markers that signal the model has started a genuinely NEW Q&A pair from
+# the context (not the leaked "Q:" label on the current answer, which is
+# handled separately by _clean_answer). Deliberately excludes a bare "\nQ:"
+# since that pattern also matches the leaked label on the real answer itself.
+_STOP_MARKERS = ["\nQuestion:", "\n\nQuestion", "\nQuestion "]
+
+# Preamble/label patterns models sometimes leak despite prompt instructions.
+_PREAMBLE_PATTERNS = [
+    r"^sure!?\s*here'?s the answer[^:]*:?\s*",
+    r"^here'?s the answer[^:]*:?\s*",
+    r"^sure!?\s*",
+    r"^q:\s*.*?a:\s*",  # leaked "Q: ... A:" label pair, same line or across lines
+]
+
+
+def _clean_answer(text: str) -> str:
+    """Strip common preamble/label artifacts a small model may leak despite
+    prompt instructions, e.g. 'Sure! Here's the answer: Q: ... A: ...'."""
+    cleaned = text.strip()
+    for pattern in _PREAMBLE_PATTERNS:
+        cleaned = re.sub(pattern, "", cleaned, count=1, flags=re.IGNORECASE | re.DOTALL)
+    return cleaned.strip()
 
 
 def _truncate_at_stop(text: str) -> str:
@@ -64,7 +86,8 @@ def _truncate_at_stop(text: str) -> str:
         idx = text.find(marker)
         if idx != -1:
             earliest = min(earliest, idx)
-    return text[:earliest].strip()
+    truncated = text[:earliest].strip()
+    return _clean_answer(truncated)
 
 
 def get_llm():
