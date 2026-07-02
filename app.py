@@ -390,28 +390,42 @@ def classify_query(question, db, high=SIMILARITY_THRESHOLD, low=SIMILARITY_LOW_T
         return "uncovered", top_score, docs
     return "off_topic", top_score, docs
 
+import os as _os  # local alias to avoid clashing with any existing 'os' usage above
+
+DEBUG_SCORES = _os.environ.get("HEALTHBOT_DEBUG_SCORES", "0") == "1"
+
+
+def _with_debug_score(text: str, status: str, score: float) -> str:
+    if DEBUG_SCORES:
+        return f"{text}\n\n_[debug: status={status}, score={score:.3f}]_"
+    return text
+
+
 def generate_answer(question, db, llm_tuple):
     backend_type, llm = llm_tuple
     status, score, docs = classify_query(question, db)
 
     if status == "off_topic":
-        return ("ood", "I'm a healthcare assistant and can only help with health-related questions. "
-                "Your question doesn't appear to be related to medical or wellness topics. "
-                "Please ask about symptoms, conditions, nutrition, mental health, "
-                "preventive care, or other health topics.")
+        msg = ("I'm a healthcare assistant and can only help with health-related questions. "
+               "Your question doesn't appear to be related to medical or wellness topics. "
+               "Please ask about symptoms, conditions, nutrition, mental health, "
+               "preventive care, or other health topics.")
+        return ("ood", _with_debug_score(msg, status, score))
 
     if status == "uncovered":
-        return ("ood", "I don't have enough information on that specific topic in my current knowledge base. "
-                "I can help with related topics like diabetes, heart health, respiratory conditions, "
-                "mental health, nutrition, sleep, and preventive care — for guidance on this particular "
-                "question, please consult a qualified healthcare professional.")
+        msg = ("I don't have enough information on that specific topic in my current knowledge base. "
+               "I can help with related topics like diabetes, heart health, respiratory conditions, "
+               "mental health, nutrition, sleep, and preventive care — for guidance on this particular "
+               "question, please consult a qualified healthcare professional.")
+        return ("ood", _with_debug_score(msg, status, score))
 
     context = "\n\n".join(doc.page_content for doc in docs)
     try:
         if backend_type == "ollama":
-            return ("bot", generate_answer_ollama(llm, context, question))
+            answer = generate_answer_ollama(llm, context, question)
         else:
-            return ("bot", generate_answer_hf(llm, context, question))
+            answer = generate_answer_hf(llm, context, question)
+        return ("bot", _with_debug_score(answer, status, score))
     except Exception as e:
         if backend_type == "ollama":
             return ("bot", f"Could not reach Ollama. Make sure it's running and Llama 3.2 is pulled.\n\nError: {e}")
