@@ -26,18 +26,14 @@ jobs:
           pip install -r requirements.txt
           pip install pytest
 
-      # Fast tests only by default: file integrity + module imports.
-      # This keeps CI quick and reliable on every push.
+     
       - name: Run fast smoke tests
         run: PYTHONPATH=. pytest tests/ -v -m "not slow"
 
-      # The retrieval quality gate (embeddings + FAISS) — downloads a small
-      # (~80MB) sentence-transformer model, so it's slower but still practical.
-      # Runs separately so a failure here is easy to distinguish from a basic
-      # file/import problem.
+      
       - name: Run retrieval quality gate
         run: PYTHONPATH=. pytest tests/ -v -m "slow"
-        continue-on-error: true  # remove this line once the test is confirmed stable
+         
 
   docker-build:
     name: Build Docker image
