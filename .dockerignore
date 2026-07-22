@@ -1,0 +1,16 @@
+.git
+.gitignore
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+env/
+screenshots/
+.DS_Store
+.vscode/
+.idea/
+.github/
+tests/
+*.faiss
+faiss_index/

@@ -1,0 +1,4 @@
+*.faiss binary
+*.pkl binary
+*.bin binary
+*.index binary
