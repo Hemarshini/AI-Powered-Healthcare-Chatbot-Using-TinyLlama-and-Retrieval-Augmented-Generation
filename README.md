@@ -13,7 +13,7 @@ pinned: false
 
 A domain-specific healthcare chatbot that answers medical and lifestyle questions using Retrieval-Augmented Generation (RAG), grounding every response in a **hand-curated 129-entry medical knowledge base** rather than relying on the raw, unverified knowledge of the underlying language model. Off-topic questions and health-related-but-uncovered questions are detected via a two-tier similarity check and given distinct, honest responses rather than an ungrounded guess.
 
-[![CI](https://github.com/Hemarshini/REPO-NAME/actions/workflows/ci.yml/badge.svg)](https://github.com/Hemarshini/REPO-NAME/actions/workflows/ci.yml)
+[![CI](https://github.com/Hemarshini/AI-Powered-Healthcare-Chatbot/actions/workflows/ci.yml/badge.svg)](https://github.com/Hemarshini/AI-Powered-Healthcare-Chatbot/actions/workflows/ci.yml)
 
 
 **[Live Demo](https://huggingface.co/spaces/Hemarshini/healthcare-chatbot-rag)** &nbsp;·&nbsp; **[Source Code](https://github.com/Hemarshini/AI-Powered-Healthcare-Chatbot)** &nbsp;·&nbsp; Built by [Divvela Hemarshini](https://www.linkedin.com/in/divvelahemarshini)
