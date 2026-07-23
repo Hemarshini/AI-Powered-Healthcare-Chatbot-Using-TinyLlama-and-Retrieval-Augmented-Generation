@@ -133,6 +133,27 @@ HEALTHBOT_LLM_BACKEND=hf_pipeline streamlit run app.py
 ```bash
 python eval_chatbot.py
 ```
+## Docker & CI/CD
+
+The app is containerized with Docker, defaulting to the lightweight `hf_pipeline` backend so it runs without requiring a GPU or an external Ollama server. A GitHub Actions CI pipeline validates the retrieval layer — knowledge base integrity, embedding generation, and FAISS index relevance — on every push, deliberately scoped to avoid downloading the full LLM in CI to keep the pipeline fast and reliable.
+
+### Run with Docker
+
+```bash
+docker build -t healthcare-chatbot-rag .
+docker run -p 8501:8501 healthcare-chatbot-rag
+```
+
+Then open `http://localhost:8501` in your browser.
+
+### CI Pipeline
+
+Every push to `main` triggers:
+1. **Fast smoke tests** — confirms the knowledge base, embedding module, and FAISS logic all import and load correctly
+2. **Retrieval quality gate** — builds real embeddings and a FAISS index, then confirms a clearly on-topic query retrieves a relevant result, catching silent embedding or chunking regressions
+3. **Docker build** — gated behind both test stages passing
+
+See the workflow file at `.github/workflows/ci.yml`.
 
 ## Deployment
 
